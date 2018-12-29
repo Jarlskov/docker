@@ -1,0 +1,50 @@
+version: '2'
+services:
+    fpm:
+        build:
+            context: ..
+            dockerfile: docker/fpm/Dockerfile
+        links: 
+            - mysql
+        mem_limit: 256m
+        env_file: ../.env
+        volumes:
+            - ../:/var/www/html/
+            - ./fpm/php.ini:/usr/local/etc/php/conf.t/website.ini
+            - ./fpm/php-fpm.conf:/usr/local/etc/php-fpm.d/zzz-website.conf
+
+    workspace:
+        build:
+            context: ..
+            dockerfile: docker/workspace/Dockerfile
+        links:
+            - mysql
+        mem_limit: 480m
+        env_file: ../.env
+        volumes: 
+            - ../:/var/www/html
+            - ./fpm/php.ini:/usr/local/etc/php/conf.d/website.ini
+            - ./scripts/supervisor_stdout_modified.py:/usr/lib/python2.7/supervisor_stdout.py
+
+    nginx:
+        build:
+            context: ..
+            dockerfile: docker/nginx/Dockerfile
+        ports:
+            - 4000:80
+        links:
+            - fpm
+        env_file: ../.env
+        mem_limit: 64m
+        volumes:
+            - ../:/var/www/html
+            - ./nginx/conf.d/:/etc/nginx/conf.d/
+
+    mysql:
+        image: mysql:5.7
+        command: ["mysqld", "--explicit_defaults_for_timestamp=1", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_520_ci"]
+        env_file: ../.env
+        ports:
+            - 8002:3306
+        tmpfs:
+            - /var/lib/mysql
